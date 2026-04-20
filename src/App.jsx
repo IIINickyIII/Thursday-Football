@@ -73,10 +73,7 @@ export default function App() {
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingName, setEditingName] = useState("");
   const [showPicker, setShowPicker] = useState(false);
-  const [importText, setImportText] = useState("");
-  const [importError, setImportError] = useState("");
-  const [importSuccess, setImportSuccess] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(false);
+
 
   useEffect(() => { try { localStorage.setItem("footy_players", JSON.stringify(players)); } catch {} }, [players]);
   useEffect(() => { try { localStorage.setItem("footy_payments", JSON.stringify(payments)); } catch {} }, [payments]);
@@ -162,37 +159,7 @@ export default function App() {
     setEditingPlayer(null);
   };
 
-  const exportBackup = () => {
-    const data = { players, payments, gameWeeks, weekCost, exportedAt: new Date().toISOString() };
-    const json = JSON.stringify(data);
-    navigator.clipboard.writeText(json).then(() => {
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 3000);
-    });
-  };
 
-  const [showRawBackup, setShowRawBackup] = useState(false);
-  const getRawBackup = () => {
-    const data = { players, payments, gameWeeks, weekCost, exportedAt: new Date().toISOString() };
-    return JSON.stringify(data);
-  };
-
-  const importData = () => {
-    try {
-      const data = JSON.parse(importText);
-      if (!data.players || !Array.isArray(data.players)) throw new Error();
-      setPlayers(data.players);
-      setPayments(data.payments || {});
-      setGameWeeks(data.gameWeeks || {});
-      if (data.weekCost) setWeekCost(data.weekCost);
-      setImportSuccess(true);
-      setImportError("");
-      setImportText("");
-      setTimeout(() => setImportSuccess(false), 3000);
-    } catch {
-      setImportError("Invalid backup — check the text and try again");
-    }
-  };
 
   const sortedByGames = (list) => [...list].sort((a, b) => {
     const ag = activeWeeks.filter(w => getPlaying(w).includes(a)).length;
@@ -507,29 +474,7 @@ export default function App() {
           ))}
         </div>
       )}
-          <div style={{ borderTop: "1px solid #141c35", paddingTop: 16 }}>
-            <div style={{ fontSize: 10, color: "#4a5a8a", letterSpacing: ".12em", marginBottom: 10 }}>RESTORE BACKUP</div>
-            <div style={{ fontSize: 12, color: "#4a5a8a", marginBottom: 10, lineHeight: 1.6 }}>Paste a previously saved backup below.</div>
-            <textarea className="ti" style={{ width: "100%", height: 100, resize: "none", padding: "8px 12px", fontSize: 12 }}
-              placeholder="Paste backup here..."
-              value={importText}
-              onChange={e => { setImportText(e.target.value); setImportError(""); }} />
-            {importError && <div style={{ fontSize: 11, color: "#f87171", marginTop: 6 }}>{importError}</div>}
-            {importSuccess && <div style={{ fontSize: 11, color: "#4ade80", marginTop: 6 }}>✓ Data restored!</div>}
-            <button className="pb" style={{ marginTop: 10, width: "100%", padding: "12px 0", background: "#1a2f1a", color: "#4ade80", border: "1px solid #2a4f2a", fontSize: 12 }}
-              onClick={importData}>RESTORE DATA</button>
-          </div>
 
-          <div style={{ borderTop: "1px solid #141c35", marginTop: 20, paddingTop: 16 }}>
-            <div style={{ fontSize: 10, color: "#3a4a6a", letterSpacing: ".1em", marginBottom: 8 }}>CURRENT DATA</div>
-            <div style={{ fontSize: 12, color: "#4a5a8a", lineHeight: 2 }}>
-              <div>{players.length} players</div>
-              <div>{activeWeeks.length} active game weeks</div>
-              <div>{Object.keys(payments).length} payment records</div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
