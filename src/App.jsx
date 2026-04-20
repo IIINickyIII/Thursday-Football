@@ -261,7 +261,6 @@ export default function App() {
           <button className={`tb ${tab === "balances" ? "act" : ""}`} onClick={() => setTab("balances")}>Balances</button>
           <button className={`tb ${tab === "stats" ? "act" : ""}`} onClick={() => setTab("stats")}>Stats</button>
           <button className={`tb ${tab === "players" ? "act" : ""}`} onClick={() => setTab("players")}>Players</button>
-          <button className={`tb ${tab === "backup" ? "act" : ""}`} onClick={() => setTab("backup")}>Backup</button>
         </div>
       </div>
 
@@ -508,33 +507,6 @@ export default function App() {
           ))}
         </div>
       )}
-
-      {/* BACKUP TAB */}
-      {tab === "backup" && (
-        <div style={{ padding: 16 }}>
-          <div style={{ background: "#110a0a", border: "1px solid #4f2a2a", borderRadius: 8, padding: 12, marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: "#f87171", letterSpacing: ".08em", marginBottom: 4 }}>⚠ IMPORTANT</div>
-            <div style={{ fontSize: 12, color: "#9a6a6a", lineHeight: 1.6 }}>Back up regularly into your Notes app. Each time this app is updated your data may be lost. Do not rely on browser storage alone.</div>
-          </div>
-
-          <div style={{ fontSize: 10, color: "#4a5a8a", letterSpacing: ".12em", marginBottom: 10 }}>SAVE BACKUP</div>
-          <div style={{ fontSize: 12, color: "#4a5a8a", marginBottom: 14, lineHeight: 1.6 }}>Copy your data and paste it into Notes or anywhere safe.</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <button className="pb" style={{ flex: 1, padding: "12px 0", background: "#1e3a5a", color: "#7eb8f7", fontSize: 12 }}
-              onClick={exportBackup}>{copySuccess ? "✓ COPIED!" : "⎘ COPY TO CLIPBOARD"}</button>
-            <button className="pb" style={{ flex: 1, padding: "12px 0", background: "#141c35", color: "#7eb8f7", border: "1px solid #2a3a6e", fontSize: 12 }}
-              onClick={() => setShowRawBackup(p => !p)}>👁 {showRawBackup ? "HIDE" : "SHOW TEXT"}</button>
-          </div>
-          {showRawBackup && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, color: "#4a5a8a", marginBottom: 6 }}>Select all the text below and copy it into Notes:</div>
-              <textarea readOnly className="ti" style={{ width: "100%", height: 120, resize: "none", padding: "8px 12px", fontSize: 11, lineHeight: 1.5, color: "#7eb8f7" }}
-                value={getRawBackup()}
-                onFocus={e => e.target.select()}
-              />
-            </div>
-          )}
-
           <div style={{ borderTop: "1px solid #141c35", paddingTop: 16 }}>
             <div style={{ fontSize: 10, color: "#4a5a8a", letterSpacing: ".12em", marginBottom: 10 }}>RESTORE BACKUP</div>
             <div style={{ fontSize: 12, color: "#4a5a8a", marginBottom: 10, lineHeight: 1.6 }}>Paste a previously saved backup below.</div>
