@@ -1,6 +1,21 @@
 import { useState, useEffect } from "react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAAWQnIBucg-jfAu-gkNbh3PrOKXrP4zyE",
+  authDomain: "thursday-football-ddd1e.firebaseapp.com",
+  projectId: "thursday-football-ddd1e",
+  storageBucket: "thursday-football-ddd1e.firebasestorage.app",
+  messagingSenderId: "642553863159",
+  appId: "1:642553863159:web:15ceee95d9f5e2e327acf2"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
 
 const WEEKLY_COST = 6;
+const DOC_REF = doc(db, "data", "main");
 
 function toLocalKey(date) {
   const y = date.getFullYear();
@@ -49,18 +64,12 @@ function formatShortDate(key) {
 }
 
 export default function App() {
-  const [players, setPlayers] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("footy_players")) || []; } catch { return []; }
-  });
-  const [payments, setPayments] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("footy_payments")) || {}; } catch { return {}; }
-  });
-  const [gameWeeks, setGameWeeks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("footy_gameweeks")) || {}; } catch { return {}; }
-  });
-  const [weekCost, setWeekCost] = useState(() => {
-    try { return Number(localStorage.getItem("footy_cost")) || WEEKLY_COST; } catch { return WEEKLY_COST; }
-  });
+  const [players, setPlayers] = useState([]);
+  const [payments, setPayments] = useState({});
+  const [gameWeeks, setGameWeeks] = useState({});
+  const [weekCost, setWeekCost] = useState(WEEKLY_COST);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const thursdays = getAllThursdays();
   const todayKey = getLastThursdayKey();
@@ -69,46 +78,79 @@ export default function App() {
   const [tab, setTab] = useState("week");
   const [newPlayerName, setNewPlayerName] = useState("");
   const [editingCost, setEditingCost] = useState(false);
-  const [tempCost, setTempCost] = useState(weekCost);
+  const [tempCost, setTempCost] = useState(WEEKLY_COST);
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingName, setEditingName] = useState("");
   const [showPicker, setShowPicker] = useState(false);
 
+  // Load from Firebase on mount
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const snap = await getDoc(DOC_REF);
+        if (snap.exists()) {
+          const data = snap.data();
+          setPlayers(data.players || []);
+          setPayments(data.payments || {});
+          setGameWeeks(data.gameWeeks || {});
+          setWeekCost(data.weekCost || WEEKLY_COST);
+          setTempCost(data.weekCost || WEEKLY_COST);
+        }
+      } catch (e) {
+        console.error("Failed to load:", e);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
 
-  useEffect(() => { try { localStorage.setItem("footy_players", JSON.stringify(players)); } catch {} }, [players]);
-  useEffect(() => { try { localStorage.setItem("footy_payments", JSON.stringify(payments)); } catch {} }, [payments]);
-  useEffect(() => { try { localStorage.setItem("footy_gameweeks", JSON.stringify(gameWeeks)); } catch {} }, [gameWeeks]);
-  useEffect(() => { try { localStorage.setItem("footy_cost", String(weekCost)); } catch {} }, [weekCost]);
+  // Save to Firebase whenever data changes
+  const saveData = async (newPlayers, newPayments, newGameWeeks, newWeekCost) => {
+    setSaving(true);
+    try {
+      await setDoc(DOC_REF, {
+        players: newPlayers,
+        payments: newPayments,
+        gameWeeks: newGameWeeks,
+        weekCost: newWeekCost,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error("Failed to save:", e);
+    }
+    setSaving(false);
+  };
+
+  const updatePlayers = (val) => { setPlayers(val); saveData(val, payments, gameWeeks, weekCost); };
+  const updatePayments = (val) => { setPayments(val); saveData(players, val, gameWeeks, weekCost); };
+  const updateGameWeeks = (val) => { setGameWeeks(val); saveData(players, payments, val, weekCost); };
+  const updateWeekCost = (val) => { setWeekCost(val); saveData(players, payments, gameWeeks, val); };
 
   const getWeek = (key) => gameWeeks[key] || { active: false, playing: [] };
   const isActive = (key) => getWeek(key).active;
   const getPlaying = (key) => getWeek(key).playing || [];
 
   const toggleGameOn = (key) => {
-    setGameWeeks(prev => {
-      const w = prev[key] || { active: false, playing: [] };
-      return { ...prev, [key]: { ...w, active: !w.active } };
-    });
+    const w = gameWeeks[key] || { active: false, playing: [] };
+    const val = { ...gameWeeks, [key]: { ...w, active: !w.active } };
+    updateGameWeeks(val);
   };
 
   const togglePlayerPlaying = (key, player) => {
-    setGameWeeks(prev => {
-      const w = prev[key] || { active: true, playing: [] };
-      const playing = w.playing.includes(player)
-        ? w.playing.filter(p => p !== player)
-        : [...w.playing, player];
-      return { ...prev, [key]: { ...w, playing } };
-    });
+    const w = gameWeeks[key] || { active: true, playing: [] };
+    const playing = w.playing.includes(player)
+      ? w.playing.filter(p => p !== player)
+      : [...w.playing, player];
+    const val = { ...gameWeeks, [key]: { ...w, playing } };
+    updateGameWeeks(val);
   };
 
   const togglePaid = (player, week) => {
-    setPayments(prev => {
-      const k = `${week}__${player}`;
-      const next = { ...prev };
-      if (next[k]) delete next[k];
-      else next[k] = { paid: true, amount: weekCost, ts: Date.now() };
-      return next;
-    });
+    const k = `${week}__${player}`;
+    const next = { ...payments };
+    if (next[k]) delete next[k];
+    else next[k] = { paid: true, amount: weekCost, ts: Date.now() };
+    updatePayments(next);
   };
 
   const isPaid = (player, week) => !!payments[`${week}__${player}`];
@@ -131,41 +173,43 @@ export default function App() {
   const addPlayer = () => {
     const name = newPlayerName.trim();
     if (name && !players.includes(name)) {
-      setPlayers(prev => [...prev, name]);
+      updatePlayers([...players, name]);
       setNewPlayerName("");
     }
   };
 
-  const removePlayer = (p) => setPlayers(prev => prev.filter(x => x !== p));
+  const removePlayer = (p) => updatePlayers(players.filter(x => x !== p));
 
   const savePlayerName = (old, newName) => {
     const t = newName.trim();
     if (!t || t === old) { setEditingPlayer(null); return; }
-    setPlayers(prev => prev.map(p => p === old ? t : p));
-    setGameWeeks(prev => {
-      const next = {};
-      Object.entries(prev).forEach(([k, v]) => {
-        next[k] = { ...v, playing: v.playing.map(p => p === old ? t : p) };
-      });
-      return next;
+    const newPlayers = players.map(p => p === old ? t : p);
+    const newGameWeeks = {};
+    Object.entries(gameWeeks).forEach(([k, v]) => {
+      newGameWeeks[k] = { ...v, playing: v.playing.map(p => p === old ? t : p) };
     });
-    setPayments(prev => {
-      const next = {};
-      Object.entries(prev).forEach(([k, v]) => {
-        next[k.replace(`__${old}`, `__${t}`)] = v;
-      });
-      return next;
+    const newPayments = {};
+    Object.entries(payments).forEach(([k, v]) => {
+      newPayments[k.replace(`__${old}`, `__${t}`)] = v;
     });
+    setPlayers(newPlayers);
+    setGameWeeks(newGameWeeks);
+    setPayments(newPayments);
+    saveData(newPlayers, newPayments, newGameWeeks, weekCost);
     setEditingPlayer(null);
   };
-
-
 
   const sortedByGames = (list) => [...list].sort((a, b) => {
     const ag = activeWeeks.filter(w => getPlaying(w).includes(a)).length;
     const bg = activeWeeks.filter(w => getPlaying(w).includes(b)).length;
     return bg - ag;
   });
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#0a0f1e", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Mono',monospace", color: "#7eb8f7", fontSize: 14, letterSpacing: ".1em" }}>
+      LOADING...
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0f1e", color: "#e8eaf0", fontFamily: "'DM Mono','Courier New',monospace", paddingBottom: 80, maxWidth: 480, margin: "0 auto" }}>
@@ -204,7 +248,9 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
           <div>
             <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, letterSpacing: ".05em", lineHeight: 1, color: "#7eb8f7" }}>THURSDAY FOOTBALL</div>
-            <div style={{ fontSize: 11, color: "#3a4a6a", marginTop: 2, letterSpacing: ".1em" }}>PAYMENT TRACKER</div>
+            <div style={{ fontSize: 11, color: "#3a4a6a", marginTop: 2, letterSpacing: ".1em" }}>
+              PAYMENT TRACKER {saving && <span style={{ color: "#4a5a8a" }}>· SAVING...</span>}
+            </div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 10, color: "#3a4a6a", letterSpacing: ".1em", marginBottom: 2 }}>WEEKLY FEE</div>
@@ -213,9 +259,9 @@ export default function App() {
                 <span style={{ color: "#4a5a8a" }}>£</span>
                 <input className="ti" style={{ width: 60, padding: "4px 8px", fontSize: 14 }} type="number" value={tempCost}
                   onChange={e => setTempCost(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") { setWeekCost(Number(tempCost)); setEditingCost(false); } if (e.key === "Escape") setEditingCost(false); }}
+                  onKeyDown={e => { if (e.key === "Enter") { updateWeekCost(Number(tempCost)); setEditingCost(false); } if (e.key === "Escape") setEditingCost(false); }}
                   autoFocus />
-                <button className="pb" style={{ background: "#1e3a5a", color: "#7eb8f7" }} onClick={() => { setWeekCost(Number(tempCost)); setEditingCost(false); }}>✓</button>
+                <button className="pb" style={{ background: "#1e3a5a", color: "#7eb8f7" }} onClick={() => { updateWeekCost(Number(tempCost)); setEditingCost(false); }}>✓</button>
               </div>
             ) : (
               <button onClick={() => { setTempCost(weekCost); setEditingCost(true); }}
@@ -281,9 +327,9 @@ export default function App() {
                       ))}
                     </div>
                     <button className="pb" style={{ marginTop: 10, background: "#1e3a5a", color: "#7eb8f7", fontSize: 11 }}
-                      onClick={() => setGameWeeks(prev => ({ ...prev, [viewWeek]: { ...getWeek(viewWeek), playing: [...players] } }))}>SELECT ALL</button>
+                      onClick={() => { const val = { ...gameWeeks, [viewWeek]: { ...getWeek(viewWeek), playing: [...players] } }; updateGameWeeks(val); }}>SELECT ALL</button>
                     <button className="pb" style={{ marginTop: 10, marginLeft: 8, background: "#1f1a1a", color: "#f87171", fontSize: 11 }}
-                      onClick={() => setGameWeeks(prev => ({ ...prev, [viewWeek]: { ...getWeek(viewWeek), playing: [] } }))}>CLEAR ALL</button>
+                      onClick={() => { const val = { ...gameWeeks, [viewWeek]: { ...getWeek(viewWeek), playing: [] } }; updateGameWeeks(val); }}>CLEAR ALL</button>
                   </div>
                 )}
               </div>
@@ -474,7 +520,6 @@ export default function App() {
           ))}
         </div>
       )}
-
     </div>
   );
 }
