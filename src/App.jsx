@@ -27,15 +27,15 @@ function toLocalKey(date) {
 function getLastThursdayKey() {
   const now = new Date();
   const day = now.getDay();
-  // On Friday (5), Saturday (6), Sunday (0) — show NEXT Thursday
-  if (day === 5 || day === 6) {
-    const daysUntil = (4 - day + 7) % 7;
+  // Fri=5, Sat=6, Sun=0 — jump to NEXT Thursday
+  if (day === 5 || day === 6 || day === 0) {
+    const daysUntil = day === 5 ? 6 : day === 6 ? 5 : 4;
     const next = new Date(now);
     next.setDate(now.getDate() + daysUntil);
     next.setHours(0, 0, 0, 0);
     return toLocalKey(next);
   }
-  // Otherwise show most recent Thursday
+  // Mon-Thu — show most recent Thursday
   const diff = (day + 3) % 7;
   const thu = new Date(now);
   thu.setDate(now.getDate() - diff);
