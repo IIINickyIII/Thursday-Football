@@ -506,13 +506,14 @@ export default function App() {
                     <div>
                       {sortedByGames(players).map(player => {
                         const isPlaying = playing.includes(player);
-                        const allPastActive = activeWeeks.filter(w => w <= todayKey).sort();
-                        const gamesPlayed = allPastActive.filter(w => getPlaying(w).includes(player)).length;
-                        const isHundred = allPastActive.length > 0 && gamesPlayed === allPastActive.length && gamesPlayed > 0;
+                        const pastWeeks = thursdays.filter(w => isActive(w) && w < viewWeek);
+                        const gamesPlayed = pastWeeks.filter(w => getPlaying(w).includes(player)).length;
+                        const isHundred = pastWeeks.length > 0 && gamesPlayed === pastWeeks.length;
                         const isFlashing = flashingPlayer === player;
                         return (
                           <button key={player}
                             className={`chip ${isFlashing ? "flash-gold" : isPlaying ? "con" : "cof"}`}
+                            style={isFlashing ? { background: "#fbbf24", color: "#000", borderColor: "#fbbf24" } : {}}
                             onClick={() => {
                               if (!isPlaying && isHundred) {
                                 setFlashingPlayer(player);
