@@ -82,6 +82,7 @@ export default function App() {
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingName, setEditingName] = useState("");
   const [showPicker, setShowPicker] = useState(false);
+  const [statsView, setStatsView] = useState("year");
 
   // Load from Firebase on mount
   useEffect(() => {
@@ -436,18 +437,26 @@ export default function App() {
       {/* STATS TAB */}
       {tab === "stats" && (
         <div>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid #141c35", fontSize: 11, color: "#4a5a8a" }}>
-            {activeWeeks.length} GAME WEEK{activeWeeks.length !== 1 ? "S" : ""} PLAYED
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid #141c35", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 11, color: "#4a5a8a" }}>{activeWeeks.length} GAME WEEK{activeWeeks.length !== 1 ? "S" : ""} PLAYED</div>
+            <div style={{ display: "flex", gap: 0, border: "1px solid #2a3a6e", borderRadius: 4, overflow: "hidden" }}>
+              <button onClick={() => setStatsView("year")} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", background: statsView === "year" ? "#1e3a5a" : "transparent", color: statsView === "year" ? "#7eb8f7" : "#4a5a8a", fontFamily: "'DM Mono',monospace" }}>THIS YEAR</button>
+              <button onClick={() => setStatsView("alltime")} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", background: statsView === "alltime" ? "#1e3a5a" : "transparent", color: statsView === "alltime" ? "#7eb8f7" : "#4a5a8a", fontFamily: "'DM Mono',monospace", borderLeft: "1px solid #2a3a6e" }}>ALL TIME</button>
+            </div>
           </div>
           {activeWeeks.length === 0 && (
             <div className="nb"><div style={{ fontSize: 11, color: "#4a5a8a" }}>No active weeks yet</div></div>
           )}
           {activeWeeks.length > 0 && (() => {
-            const pastActiveWeeks = activeWeeks.filter(w => w <= todayKey).sort();
+            const currentYear = new Date().getFullYear();
+            const allPastActive = activeWeeks.filter(w => w <= todayKey).sort();
+            const pastActiveWeeks = statsView === "year"
+              ? allPastActive.filter(w => w.startsWith(String(currentYear)))
+              : allPastActive;
             const getStreak = (player) => {
               let streak = 0;
-              for (let i = pastActiveWeeks.length - 1; i >= 0; i--) {
-                if (getPlaying(pastActiveWeeks[i]).includes(player)) streak++;
+              for (let i = allPastActive.length - 1; i >= 0; i--) {
+                if (getPlaying(allPastActive[i]).includes(player)) streak++;
                 else break;
               }
               return streak;
@@ -457,12 +466,11 @@ export default function App() {
                 const gamesPlayed = pastActiveWeeks.filter(w => getPlaying(w).includes(p)).length;
                 const streak = getStreak(p);
                 const attendance = pastActiveWeeks.length > 0 ? Math.round((gamesPlayed / pastActiveWeeks.length) * 100) : 0;
-                const weeksPlayed = pastActiveWeeks.filter(w => getPlaying(w).includes(p));
+                const weeksPlayed = allPastActive.filter(w => getPlaying(w).includes(p));
                 const lastPlayed = weeksPlayed.length > 0 ? weeksPlayed[weeksPlayed.length - 1] : null;
                 const lastPlayedFormatted = lastPlayed ? formatDate(lastPlayed) : null;
-                // Count how many active weeks since they last played
-                const lastPlayedIdx = lastPlayed ? pastActiveWeeks.indexOf(lastPlayed) : -1;
-                const weeksMissed = lastPlayed ? pastActiveWeeks.length - 1 - lastPlayedIdx : pastActiveWeeks.length;
+                const lastPlayedIdx = lastPlayed ? allPastActive.indexOf(lastPlayed) : -1;
+                const weeksMissed = lastPlayed ? allPastActive.length - 1 - lastPlayedIdx : allPastActive.length;
                 return { name: p, gamesPlayed, streak, attendance, total: pastActiveWeeks.length, lastPlayedFormatted, weeksMissed };
               })
               .filter(p => p.gamesPlayed > 0 || p.weeksMissed > 0)
@@ -470,9 +478,11 @@ export default function App() {
             return statsData.map(({ name, gamesPlayed, streak, attendance, total, lastPlayedFormatted, weeksMissed }) => (
               <div key={name} className="pr" style={{ alignItems: "flex-start", padding: "12px 16px" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                     <div style={{ fontSize: 14 }}>{name}</div>
+                    {attendance === 100 && gamesPlayed > 0 && <div style={{ fontSize: 10, background: "#2a2510", color: "#fbbf24", border: "1px solid #4a3a10", borderRadius: 10, padding: "2px 7px" }}>👑 100%</div>}
                     {streak >= 3 && <div style={{ fontSize: 10, background: "#1a2f1a", color: "#4ade80", border: "1px solid #2a4f2a", borderRadius: 10, padding: "2px 7px" }}>🔥 {streak}</div>}
+                    {weeksMissed >= 10 && <div style={{ fontSize: 10, background: "#1f1010", color: "#f87171", border: "1px solid #4f2a2a", borderRadius: 10, padding: "2px 7px" }}>💀 {weeksMissed}w</div>}
                   </div>
                   <div style={{ display: "flex", gap: 12, marginBottom: 4, flexWrap: "wrap" }}>
                     <div style={{ fontSize: 11, color: "#4a5a8a" }}>{gamesPlayed}/{total} games</div>
@@ -480,14 +490,14 @@ export default function App() {
                   </div>
                   <div style={{ display: "flex", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
                     {lastPlayedFormatted && <div style={{ fontSize: 11, color: "#4a5a8a" }}>Last played: {lastPlayedFormatted}</div>}
-                    {weeksMissed > 0 && <div style={{ fontSize: 11, color: weeksMissed >= 3 ? "#f87171" : "#4a5a8a" }}>Missed: {weeksMissed} week{weeksMissed !== 1 ? "s" : ""}</div>}
+                    {weeksMissed > 0 && <div style={{ fontSize: 11, color: weeksMissed >= 10 ? "#f87171" : weeksMissed >= 3 ? "#f87171" : "#4a5a8a" }}>Missed: {weeksMissed} week{weeksMissed !== 1 ? "s" : ""}</div>}
                   </div>
                   <div style={{ height: 4, borderRadius: 2, background: "#141c35", width: "100%", overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 2, width: `${attendance}%`, background: attendance >= 80 ? "#4ade80" : attendance >= 50 ? "#7eb8f7" : "#f87171" }} />
+                    <div style={{ height: "100%", borderRadius: 2, width: `${attendance}%`, background: attendance === 100 ? "#fbbf24" : attendance >= 80 ? "#4ade80" : attendance >= 50 ? "#7eb8f7" : "#f87171" }} />
                   </div>
                 </div>
                 <div style={{ textAlign: "right", minWidth: 44, marginLeft: 12 }}>
-                  <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: attendance >= 80 ? "#4ade80" : attendance >= 50 ? "#7eb8f7" : "#f87171" }}>{attendance}%</div>
+                  <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: attendance === 100 ? "#fbbf24" : attendance >= 80 ? "#4ade80" : attendance >= 50 ? "#7eb8f7" : "#f87171" }}>{attendance}%</div>
                   <div style={{ fontSize: 10, color: "#3a4a6a", letterSpacing: ".05em" }}>ATTENDANCE</div>
                 </div>
               </div>
