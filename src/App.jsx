@@ -341,6 +341,65 @@ export default function App() {
             </div>
           )}
 
+          {/* Year at a glance */}
+          {(() => {
+            const currentYear = new Date().getFullYear();
+            const yearThursdays = thursdays.filter(w => w.startsWith(String(currentYear)) && w <= viewWeek).reverse();
+            if (yearThursdays.length === 0) return null;
+            // Group into months
+            const byMonth = {};
+            yearThursdays.forEach(w => {
+              const d = new Date(w + "T12:00:00");
+              const month = d.toLocaleDateString("en-GB", { month: "short" });
+              if (!byMonth[month]) byMonth[month] = [];
+              byMonth[month].push(w);
+            });
+            return (
+              <div style={{ margin: "16px 16px 0", background: "#111827", border: "1px solid #1e2d55", borderRadius: 8, padding: 14 }}>
+                <div style={{ fontSize: 10, color: "#4a5a8a", letterSpacing: ".12em", marginBottom: 12 }}>{currentYear} AT A GLANCE</div>
+                {Object.entries(byMonth).map(([month, weeks]) => (
+                  <div key={month} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, color: "#3a4a6a", letterSpacing: ".1em", marginBottom: 5 }}>{month.toUpperCase()}</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {weeks.map(w => {
+                        const active = isActive(w);
+                        const isCurrent = w === viewWeek;
+                        const d = new Date(w + "T12:00:00");
+                        const dayNum = d.getDate();
+                        return (
+                          <div
+                            key={w}
+                            title={formatDate(w)}
+                            onClick={() => setViewWeek(w)}
+                            style={{
+                              width: 28, height: 28, borderRadius: 4, cursor: "pointer",
+                              background: active ? "#166534" : "#1a1a2e",
+                              border: isCurrent ? "2px solid #7eb8f7" : `1px solid ${active ? "#4ade80" : "#2a3a6e"}`,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: 10, color: active ? "#4ade80" : "#3a4a6a",
+                              fontFamily: "'DM Mono',monospace",
+                              transition: "all 0.1s"
+                            }}
+                          >{dayNum}</div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2, background: "#166534", border: "1px solid #4ade80" }} />
+                    <span style={{ fontSize: 10, color: "#4a5a8a" }}>Game played</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2, background: "#1a1a2e", border: "1px solid #2a3a6e" }} />
+                    <span style={{ fontSize: 10, color: "#4a5a8a" }}>No game</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {isActive(viewWeek) && (
             <>
               <div style={{ borderBottom: "1px solid #141c35" }}>
