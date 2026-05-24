@@ -72,6 +72,43 @@ function formatShortDate(key) {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+const EXCUSES = [
+  "Trapped under a wardrobe.",
+  "Dog ate my boots.",
+  "Unexpected wedding.",
+  "Mistook Tuesday for Thursday.",
+  "Car wouldn't start. Or finish.",
+  "Haunted by a mild inconvenience.",
+  "Busy watching football on TV.",
+  "Got lost leaving the house.",
+  "Knee. Just... the knee.",
+  "Had to wash his kit. Twice.",
+  "Stuck behind a very slow pigeon.",
+  "Couldn't find his other shin pad.",
+  "Attending his nan's third funeral this year.",
+  "Allegedly in a meeting.",
+  "Food baby. Non-negotiable.",
+  "Forgot which day Thursday is.",
+  "Stood up by his own sat nav.",
+  "Running late from being early somewhere else.",
+  "Pulled a muscle opening a crisp packet.",
+  "Busy rearranging his sock drawer.",
+  "Got a text back and panicked.",
+  "Distracted by a particularly good sunset.",
+  "Binge-watching something important.",
+  "Alarm set for PM not AM.",
+  "Scheduled a dentist appointment on purpose.",
+  "Too sore from last week's sofa session.",
+  "Said 'on my way' four hours ago.",
+  "Claimed to be ill but was seen at Greggs.",
+  "Saving himself for the weekend.",
+  "His boots gave him a look he didn't like.",
+];
+
+function getExcuse(seed) {
+  return EXCUSES[seed % EXCUSES.length];
+}
+
 export default function App() {
   const [players, setPlayers] = useState([]);
   const [archivedPlayers, setArchivedPlayers] = useState([]);
@@ -341,8 +378,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Year at a glance */}
-          {(() => {
+          {!isActive(viewWeek) && (() => {
             const currentYear = new Date().getFullYear();
             const yearThursdays = thursdays.filter(w => w.startsWith(String(currentYear)) && w <= viewWeek).reverse();
             if (yearThursdays.length === 0) return null;
@@ -395,6 +431,65 @@ export default function App() {
                     <div style={{ width: 10, height: 10, borderRadius: 2, background: "#1a1a2e", border: "1px solid #2a3a6e" }} />
                     <span style={{ fontSize: 10, color: "#4a5a8a" }}>No game</span>
                   </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* GOAT and MIA boxes */}
+          {(() => {
+            const currentYear = new Date().getFullYear();
+            const allPastActive = thursdays.filter(w => isActive(w) && w <= todayKey).sort();
+            if (allPastActive.length === 0) return null;
+
+            const getStreak = (player) => {
+              let streak = 0;
+              for (let i = allPastActive.length - 1; i >= 0; i--) {
+                if (getPlaying(allPastActive[i]).includes(player)) streak++;
+                else break;
+              }
+              return streak;
+            };
+
+            const playerStats = players.map((p, idx) => {
+              const gamesPlayed = allPastActive.filter(w => getPlaying(w).includes(p)).length;
+              const streak = getStreak(p);
+              const attendance = allPastActive.length > 0 ? Math.round((gamesPlayed / allPastActive.length) * 100) : 0;
+              return { name: p, gamesPlayed, streak, attendance, idx };
+            }).filter(p => p.gamesPlayed > 0);
+
+            if (playerStats.length === 0) return null;
+
+            // GOATs: top 3 by games played, tiebreak by streak
+            const goats = [...playerStats].sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.streak - a.streak).slice(0, 3);
+            // MIA: bottom 3 by attendance (min 1 game)
+            const mia = [...playerStats].sort((a, b) => a.attendance - b.attendance).slice(0, 3);
+
+            return (
+              <div style={{ display: "flex", gap: 10, padding: "12px 16px", borderBottom: "1px solid #141c35" }}>
+                {/* GOATs */}
+                <div style={{ flex: 1, background: "#0d1a0d", border: "1px solid #2a4f2a", borderRadius: 8, padding: 12 }}>
+                  <div style={{ fontSize: 11, color: "#4ade80", letterSpacing: ".1em", marginBottom: 8 }}>🐐 GOATs</div>
+                  {goats.map((p, i) => (
+                    <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                      <div style={{ fontFamily: "'Bebas Neue'", fontSize: 16, color: i === 0 ? "#fbbf24" : i === 1 ? "#9ca3af" : "#b45309", minWidth: 16 }}>{i + 1}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, color: "#e8eaf0" }}>{p.name}</div>
+                        <div style={{ fontSize: 10, color: "#4a5a8a" }}>{p.gamesPlayed} games{p.streak >= 2 ? ` · 🔥${p.streak}` : ""}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* MIA */}
+                <div style={{ flex: 1, background: "#1a0d0d", border: "1px solid #4f2a2a", borderRadius: 8, padding: 12 }}>
+                  <div style={{ fontSize: 11, color: "#f87171", letterSpacing: ".1em", marginBottom: 8 }}>👻 MIA</div>
+                  {mia.map((p) => (
+                    <div key={p.name} style={{ marginBottom: 5 }}>
+                      <div style={{ fontSize: 12, color: "#e8eaf0" }}>{p.name}</div>
+                      <div style={{ fontSize: 10, color: "#6a3a3a", fontStyle: "italic", lineHeight: 1.3 }}>{getExcuse(p.idx + p.gamesPlayed)}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
