@@ -128,7 +128,7 @@ export default function App() {
   const [tempCost, setTempCost] = useState(WEEKLY_COST);
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingName, setEditingName] = useState("");
-  const [showPicker, setShowPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(true);
   const [statsView, setStatsView] = useState("year");
   const [showLastPlayed, setShowLastPlayed] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(null);
