@@ -370,13 +370,7 @@ export default function App() {
             <button className={`tog ${isActive(viewWeek) ? "ton" : "tof"}`} onClick={() => toggleGameOn(viewWeek)} />
           </div>
 
-          {!isActive(viewWeek) && (
-            <div className="nb">
-              <div style={{ fontSize: 28, marginBottom: 8 }}>🚫</div>
-              <div style={{ fontSize: 13, color: "#4a5a8a" }}>No game scheduled</div>
-              <div style={{ fontSize: 11, color: "#2a3a6e", marginTop: 4 }}>Toggle above to activate this week</div>
-            </div>
-          )}
+
 
           {!isActive(viewWeek) && (() => {
             const currentYear = new Date().getFullYear();
@@ -436,8 +430,8 @@ export default function App() {
             );
           })()}
 
-          {/* GOAT and MIA boxes */}
-          {(() => {
+          {/* GOAT and MIA boxes - only when no game active */}
+          {!isActive(viewWeek) && (() => {
             const currentYear = new Date().getFullYear();
             const allPastActive = thursdays.filter(w => isActive(w) && w <= todayKey).sort();
             if (allPastActive.length === 0) return null;
