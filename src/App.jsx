@@ -129,6 +129,7 @@ export default function App() {
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingName, setEditingName] = useState("");
   const [showPicker, setShowPicker] = useState(true);
+  const [flashingPlayer, setFlashingPlayer] = useState(null);
   const [statsView, setStatsView] = useState("year");
   const [showLastPlayed, setShowLastPlayed] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(null);
@@ -312,6 +313,8 @@ export default function App() {
         .con:hover{filter:brightness(1.2)}
         .cof:hover{background:#1a2535;color:#7eb8f7}
         .nb{margin:20px 16px;padding:20px;border-radius:8px;background:#111827;border:1px dashed #2a3a6e;text-align:center}
+        @keyframes goldFlash{0%{background:#2a2510;color:#fbbf24;border-color:#fbbf24}50%{background:#fbbf24;color:#000;border-color:#fbbf24}100%{background:#2a2510;color:#fbbf24;border-color:#fbbf24}}
+        .flash-gold{animation:goldFlash 0.3s ease-in-out 3}
       `}</style>
 
       {/* Header */}
@@ -501,12 +504,30 @@ export default function App() {
                   <div style={{ padding: "4px 12px 12px", borderTop: "1px solid #141c35" }}>
                     <div style={{ fontSize: 11, color: "#3a4a6a", padding: "6px 4px", letterSpacing: ".08em" }}>TAP TO TOGGLE</div>
                     <div>
-                      {sortedByGames(players).map(player => (
-                        <button key={player} className={`chip ${playing.includes(player) ? "con" : "cof"}`}
-                          onClick={() => togglePlayerPlaying(viewWeek, player)}>
-                          {playing.includes(player) ? "✓ " : ""}{player}
-                        </button>
-                      ))}
+                      {sortedByGames(players).map(player => {
+                        const isPlaying = playing.includes(player);
+                        const allPastActive = activeWeeks.filter(w => w <= todayKey).sort();
+                        const gamesPlayed = allPastActive.filter(w => getPlaying(w).includes(player)).length;
+                        const isHundred = allPastActive.length > 0 && gamesPlayed === allPastActive.length && gamesPlayed > 0;
+                        const isFlashing = flashingPlayer === player;
+                        return (
+                          <button key={player}
+                            className={`chip ${isFlashing ? "flash-gold" : isPlaying ? "con" : "cof"}`}
+                            onClick={() => {
+                              if (!isPlaying && isHundred) {
+                                setFlashingPlayer(player);
+                                setTimeout(() => {
+                                  setFlashingPlayer(null);
+                                  togglePlayerPlaying(viewWeek, player);
+                                }, 900);
+                              } else {
+                                togglePlayerPlaying(viewWeek, player);
+                              }
+                            }}>
+                            {isPlaying ? "✓ " : ""}{player}
+                          </button>
+                        );
+                      })}
                     </div>
                     <button className="pb" style={{ marginTop: 10, background: "#1e3a5a", color: "#7eb8f7", fontSize: 11 }}
                       onClick={() => { const val = { ...gameWeeks, [viewWeek]: { ...getWeek(viewWeek), playing: [...players] } }; updateGameWeeks(val); }}>SELECT ALL</button>
