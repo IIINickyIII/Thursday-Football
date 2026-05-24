@@ -65,6 +65,7 @@ function formatShortDate(key) {
 
 export default function App() {
   const [players, setPlayers] = useState([]);
+  const [archivedPlayers, setArchivedPlayers] = useState([]);
   const [payments, setPayments] = useState({});
   const [gameWeeks, setGameWeeks] = useState({});
   const [weekCost, setWeekCost] = useState(WEEKLY_COST);
@@ -86,6 +87,8 @@ export default function App() {
   const [showLastPlayed, setShowLastPlayed] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(null);
   const [finalConfirmRemove, setFinalConfirmRemove] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [showArchivedStats, setShowArchivedStats] = useState(false);
 
   // Load from Firebase on mount
   useEffect(() => {
@@ -95,6 +98,7 @@ export default function App() {
         if (snap.exists()) {
           const data = snap.data();
           setPlayers(data.players || []);
+          setArchivedPlayers(data.archivedPlayers || []);
           setPayments(data.payments || {});
           setGameWeeks(data.gameWeeks || {});
           setWeekCost(data.weekCost || WEEKLY_COST);
@@ -109,11 +113,12 @@ export default function App() {
   }, []);
 
   // Save to Firebase whenever data changes
-  const saveData = async (newPlayers, newPayments, newGameWeeks, newWeekCost) => {
+  const saveData = async (newPlayers, newPayments, newGameWeeks, newWeekCost, newArchived) => {
     setSaving(true);
     try {
       await setDoc(DOC_REF, {
         players: newPlayers,
+        archivedPlayers: newArchived !== undefined ? newArchived : archivedPlayers,
         payments: newPayments,
         gameWeeks: newGameWeeks,
         weekCost: newWeekCost,
@@ -183,6 +188,22 @@ export default function App() {
   };
 
   const removePlayer = (p) => updatePlayers(players.filter(x => x !== p));
+
+  const archivePlayer = (p) => {
+    const newPlayers = players.filter(x => x !== p);
+    const newArchived = [...archivedPlayers, p];
+    setPlayers(newPlayers);
+    setArchivedPlayers(newArchived);
+    saveData(newPlayers, payments, gameWeeks, weekCost, newArchived);
+  };
+
+  const unarchivePlayer = (p) => {
+    const newArchived = archivedPlayers.filter(x => x !== p);
+    const newPlayers = [...players, p];
+    setPlayers(newPlayers);
+    setArchivedPlayers(newArchived);
+    saveData(newPlayers, payments, gameWeeks, weekCost, newArchived);
+  };
 
   const savePlayerName = (old, newName) => {
     const t = newName.trim();
@@ -445,9 +466,14 @@ export default function App() {
               <button onClick={() => setStatsView("year")} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", background: statsView === "year" ? "#1e3a5a" : "transparent", color: statsView === "year" ? "#7eb8f7" : "#4a5a8a", fontFamily: "'DM Mono',monospace" }}>THIS YEAR</button>
               <button onClick={() => setStatsView("alltime")} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", background: statsView === "alltime" ? "#1e3a5a" : "transparent", color: statsView === "alltime" ? "#7eb8f7" : "#4a5a8a", fontFamily: "'DM Mono',monospace", borderLeft: "1px solid #2a3a6e" }}>ALL TIME</button>
             </div>
-            <button onClick={() => setShowLastPlayed(p => !p)} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", border: "1px solid #2a3a6e", borderRadius: 4, fontFamily: "'DM Mono',monospace", background: showLastPlayed ? "#1e3a5a" : "transparent", color: showLastPlayed ? "#7eb8f7" : "#4a5a8a" }}>
-              {showLastPlayed ? "HIDE LAST PLAYED" : "SHOW LAST PLAYED"}
-            </button>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button onClick={() => setShowArchivedStats(p => !p)} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", border: "1px solid #2a3a6e", borderRadius: 4, fontFamily: "'DM Mono',monospace", background: showArchivedStats ? "#2a1e3a" : "transparent", color: showArchivedStats ? "#c084fc" : "#4a5a8a" }}>
+                {showArchivedStats ? "HIDE ARCHIVED" : "SHOW ARCHIVED"}
+              </button>
+              <button onClick={() => setShowLastPlayed(p => !p)} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", border: "1px solid #2a3a6e", borderRadius: 4, fontFamily: "'DM Mono',monospace", background: showLastPlayed ? "#1e3a5a" : "transparent", color: showLastPlayed ? "#7eb8f7" : "#4a5a8a" }}>
+                {showLastPlayed ? "HIDE LAST PLAYED" : "SHOW LAST PLAYED"}
+              </button>
+            </div>
           </div>
           {activeWeeks.length === 0 && (
             <div className="nb"><div style={{ fontSize: 11, color: "#4a5a8a" }}>No active weeks yet</div></div>
@@ -468,7 +494,8 @@ export default function App() {
               }
               return streak;
             };
-            const statsData = [...players]
+            const statPlayers = showArchivedStats ? [...players, ...archivedPlayers] : players;
+            const statsData = [...statPlayers]
               .map(p => {
                 const gamesPlayed = pastActiveWeeks.filter(w => getPlaying(w).includes(p)).length;
                 const streak = getStreak(p);
@@ -565,10 +592,29 @@ export default function App() {
               ) : (
                 <>
                   <div style={{ flex: 1, fontSize: 14 }}>{player}</div>
+                  <button className="pb" style={{ color: "#c084fc", fontSize: 11 }} onClick={() => archivePlayer(player)}>ARCHIVE</button>
                   <button className="pb" style={{ color: "#4a5a8a", fontSize: 11 }} onClick={() => { setEditingPlayer(player); setEditingName(player); }}>RENAME</button>
                   <button className="pb" style={{ color: "#f87171", fontSize: 11 }} onClick={() => setConfirmRemove(player)}>REMOVE</button>
                 </>
               )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ARCHIVED SECTION in players tab */}
+      {tab === "players" && archivedPlayers.length > 0 && (
+        <div>
+          <button onClick={() => setShowArchived(p => !p)}
+            style={{ width: "100%", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", color: "#c084fc", fontSize: 12, letterSpacing: ".08em", borderTop: "1px solid #141c35" }}>
+            <span>ARCHIVED PLAYERS ({archivedPlayers.length})</span>
+            <span style={{ color: "#4a5a8a" }}>{showArchived ? "▲ HIDE" : "▼ SHOW"}</span>
+          </button>
+          {showArchived && archivedPlayers.map(player => (
+            <div key={player} className="pr" style={{ opacity: 0.6 }}>
+              <div style={{ flex: 1, fontSize: 14, color: "#6a7a9a", fontStyle: "italic" }}>{player}</div>
+              <div style={{ fontSize: 10, color: "#4a5a8a", marginRight: 8, letterSpacing: ".06em" }}>ARCHIVED</div>
+              <button className="pb" style={{ color: "#c084fc", fontSize: 11 }} onClick={() => unarchivePlayer(player)}>UNARCHIVE</button>
             </div>
           ))}
         </div>
