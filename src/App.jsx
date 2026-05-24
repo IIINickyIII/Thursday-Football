@@ -83,6 +83,7 @@ export default function App() {
   const [editingName, setEditingName] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [statsView, setStatsView] = useState("year");
+  const [showLastPlayed, setShowLastPlayed] = useState(false);
 
   // Load from Firebase on mount
   useEffect(() => {
@@ -437,12 +438,14 @@ export default function App() {
       {/* STATS TAB */}
       {tab === "stats" && (
         <div>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid #141c35", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 11, color: "#4a5a8a" }}>{activeWeeks.length} GAME WEEK{activeWeeks.length !== 1 ? "S" : ""} PLAYED</div>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid #141c35", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 0, border: "1px solid #2a3a6e", borderRadius: 4, overflow: "hidden" }}>
               <button onClick={() => setStatsView("year")} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", background: statsView === "year" ? "#1e3a5a" : "transparent", color: statsView === "year" ? "#7eb8f7" : "#4a5a8a", fontFamily: "'DM Mono',monospace" }}>THIS YEAR</button>
               <button onClick={() => setStatsView("alltime")} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", background: statsView === "alltime" ? "#1e3a5a" : "transparent", color: statsView === "alltime" ? "#7eb8f7" : "#4a5a8a", fontFamily: "'DM Mono',monospace", borderLeft: "1px solid #2a3a6e" }}>ALL TIME</button>
             </div>
+            <button onClick={() => setShowLastPlayed(p => !p)} style={{ padding: "4px 10px", fontSize: 10, letterSpacing: ".06em", border: "1px solid #2a3a6e", borderRadius: 4, fontFamily: "'DM Mono',monospace", background: showLastPlayed ? "#1e3a5a" : "transparent", color: showLastPlayed ? "#7eb8f7" : "#4a5a8a" }}>
+              {showLastPlayed ? "HIDE LAST PLAYED" : "SHOW LAST PLAYED"}
+            </button>
           </div>
           {activeWeeks.length === 0 && (
             <div className="nb"><div style={{ fontSize: 11, color: "#4a5a8a" }}>No active weeks yet</div></div>
@@ -453,6 +456,8 @@ export default function App() {
             const pastActiveWeeks = statsView === "year"
               ? allPastActive.filter(w => w.startsWith(String(currentYear)))
               : allPastActive;
+            // Last 10 weeks for form squares
+            const recentWeeks = allPastActive.slice(-10);
             const getStreak = (player) => {
               let streak = 0;
               for (let i = allPastActive.length - 1; i >= 0; i--) {
@@ -471,11 +476,13 @@ export default function App() {
                 const lastPlayedFormatted = lastPlayed ? formatDate(lastPlayed) : null;
                 const lastPlayedIdx = lastPlayed ? allPastActive.indexOf(lastPlayed) : -1;
                 const weeksMissed = lastPlayed ? allPastActive.length - 1 - lastPlayedIdx : allPastActive.length;
-                return { name: p, gamesPlayed, streak, attendance, total: pastActiveWeeks.length, lastPlayedFormatted, weeksMissed };
+                // Form: for each recent week, played=green, not selected=red, not a game week=grey
+                const form = recentWeeks.map(w => getPlaying(w).includes(p) ? "played" : "missed");
+                return { name: p, gamesPlayed, streak, attendance, total: pastActiveWeeks.length, lastPlayedFormatted, weeksMissed, form };
               })
               .filter(p => p.gamesPlayed > 0 || p.weeksMissed > 0)
               .sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.streak - a.streak);
-            return statsData.map(({ name, gamesPlayed, streak, attendance, total, lastPlayedFormatted, weeksMissed }) => (
+            return statsData.map(({ name, gamesPlayed, streak, attendance, total, lastPlayedFormatted, weeksMissed, form }) => (
               <div key={name} className="pr" style={{ alignItems: "flex-start", padding: "12px 16px" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
@@ -488,12 +495,20 @@ export default function App() {
                     <div style={{ fontSize: 11, color: "#4a5a8a" }}>{gamesPlayed}/{total} games</div>
                     <div style={{ fontSize: 11, color: streak > 0 ? "#7eb8f7" : "#4a5a8a" }}>{streak > 0 ? `${streak} week streak` : "streak broken"}</div>
                   </div>
-                  <div style={{ display: "flex", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
-                    {lastPlayedFormatted && <div style={{ fontSize: 11, color: "#4a5a8a" }}>Last played: {lastPlayedFormatted}</div>}
-                    {weeksMissed > 0 && <div style={{ fontSize: 11, color: weeksMissed >= 10 ? "#f87171" : weeksMissed >= 3 ? "#f87171" : "#4a5a8a" }}>Missed: {weeksMissed} week{weeksMissed !== 1 ? "s" : ""}</div>}
-                  </div>
-                  <div style={{ height: 4, borderRadius: 2, background: "#141c35", width: "100%", overflow: "hidden" }}>
+                  {(showLastPlayed || weeksMissed >= 4) && (
+                    <div style={{ display: "flex", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
+                      {lastPlayedFormatted && <div style={{ fontSize: 11, color: "#4a5a8a" }}>Last played: {lastPlayedFormatted}</div>}
+                      {weeksMissed > 0 && <div style={{ fontSize: 11, color: weeksMissed >= 3 ? "#f87171" : "#4a5a8a" }}>Missed: {weeksMissed} week{weeksMissed !== 1 ? "s" : ""}</div>}
+                    </div>
+                  )}
+                  <div style={{ height: 4, borderRadius: 2, background: "#141c35", width: "100%", overflow: "hidden", marginBottom: 6 }}>
                     <div style={{ height: "100%", borderRadius: 2, width: `${attendance}%`, background: attendance === 100 ? "#fbbf24" : attendance >= 80 ? "#4ade80" : attendance >= 50 ? "#7eb8f7" : "#f87171" }} />
+                  </div>
+                  {/* Form squares - last 10 weeks */}
+                  <div style={{ display: "flex", gap: 3 }}>
+                    {form.map((f, i) => (
+                      <div key={i} title={recentWeeks[i]} style={{ width: 14, height: 14, borderRadius: 2, background: f === "played" ? "#166534" : "#2a1a1a", border: `1px solid ${f === "played" ? "#4ade80" : "#4f2a2a"}`, flexShrink: 0 }} />
+                    ))}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", minWidth: 44, marginLeft: 12 }}>
