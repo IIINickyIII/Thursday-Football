@@ -84,6 +84,8 @@ export default function App() {
   const [showPicker, setShowPicker] = useState(false);
   const [statsView, setStatsView] = useState("year");
   const [showLastPlayed, setShowLastPlayed] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(null);
+  const [finalConfirmRemove, setFinalConfirmRemove] = useState(null);
 
   // Load from Firebase on mount
   useEffect(() => {
@@ -507,7 +509,7 @@ export default function App() {
                   {/* Form squares - last 10 weeks */}
                   <div style={{ display: "flex", gap: 3 }}>
                     {form.map((f, i) => (
-                      <div key={i} title={recentWeeks[i]} style={{ width: 14, height: 14, borderRadius: 2, background: f === "played" ? "#166534" : "#2a1a1a", border: `1px solid ${f === "played" ? "#4ade80" : "#4f2a2a"}`, flexShrink: 0 }} />
+                      <div key={i} title={recentWeeks[i]} style={{ width: 14, height: 14, borderRadius: 2, background: f === "played" ? "#166534" : "#7f1d1d", border: `1px solid ${f === "played" ? "#4ade80" : "#ef4444"}`, flexShrink: 0 }} />
                     ))}
                   </div>
                 </div>
@@ -544,11 +546,27 @@ export default function App() {
                   <button className="pb" style={{ background: "#1e3a5a", color: "#7eb8f7" }} onClick={() => savePlayerName(player, editingName)}>SAVE</button>
                   <button className="pb" style={{ color: "#4a5a8a" }} onClick={() => setEditingPlayer(null)}>✕</button>
                 </>
+              ) : confirmRemove === player ? (
+                <>
+                  <div style={{ flex: 1, fontSize: 12, color: "#f87171", lineHeight: 1.4 }}>Remove {player}? This will delete all their data and affect stats.</div>
+                  <button className="pb" style={{ background: "#7f1d1d", color: "#fca5a5", fontSize: 11, border: "1px solid #ef4444" }}
+                    onClick={() => { setConfirmRemove(null); setFinalConfirmRemove(player); }}>YES</button>
+                  <button className="pb" style={{ color: "#4a5a8a", fontSize: 11 }}
+                    onClick={() => setConfirmRemove(null)}>CANCEL</button>
+                </>
+              ) : finalConfirmRemove === player ? (
+                <>
+                  <div style={{ flex: 1, fontSize: 12, color: "#f87171", lineHeight: 1.4 }}>⚠ Final warning homie, it's gone once you press it again.</div>
+                  <button className="pb" style={{ background: "#7f1d1d", color: "#fca5a5", fontSize: 11, border: "1px solid #ef4444" }}
+                    onClick={() => { setFinalConfirmRemove(null); removePlayer(player); }}>GONE</button>
+                  <button className="pb" style={{ color: "#4a5a8a", fontSize: 11 }}
+                    onClick={() => setFinalConfirmRemove(null)}>CANCEL</button>
+                </>
               ) : (
                 <>
                   <div style={{ flex: 1, fontSize: 14 }}>{player}</div>
                   <button className="pb" style={{ color: "#4a5a8a", fontSize: 11 }} onClick={() => { setEditingPlayer(player); setEditingName(player); }}>RENAME</button>
-                  <button className="pb" style={{ color: "#f87171", fontSize: 11 }} onClick={() => removePlayer(player)}>REMOVE</button>
+                  <button className="pb" style={{ color: "#f87171", fontSize: 11 }} onClick={() => setConfirmRemove(player)}>REMOVE</button>
                 </>
               )}
             </div>
