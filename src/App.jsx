@@ -457,20 +457,30 @@ export default function App() {
                 const gamesPlayed = pastActiveWeeks.filter(w => getPlaying(w).includes(p)).length;
                 const streak = getStreak(p);
                 const attendance = pastActiveWeeks.length > 0 ? Math.round((gamesPlayed / pastActiveWeeks.length) * 100) : 0;
-                return { name: p, gamesPlayed, streak, attendance, total: pastActiveWeeks.length };
+                const weeksPlayed = pastActiveWeeks.filter(w => getPlaying(w).includes(p));
+                const lastPlayed = weeksPlayed.length > 0 ? weeksPlayed[weeksPlayed.length - 1] : null;
+                const lastPlayedFormatted = lastPlayed ? formatDate(lastPlayed) : null;
+                // Count how many active weeks since they last played
+                const lastPlayedIdx = lastPlayed ? pastActiveWeeks.indexOf(lastPlayed) : -1;
+                const weeksMissed = lastPlayed ? pastActiveWeeks.length - 1 - lastPlayedIdx : pastActiveWeeks.length;
+                return { name: p, gamesPlayed, streak, attendance, total: pastActiveWeeks.length, lastPlayedFormatted, weeksMissed };
               })
-              .filter(p => p.gamesPlayed > 0)
+              .filter(p => p.gamesPlayed > 0 || p.weeksMissed > 0)
               .sort((a, b) => b.gamesPlayed - a.gamesPlayed || b.streak - a.streak);
-            return statsData.map(({ name, gamesPlayed, streak, attendance, total }) => (
+            return statsData.map(({ name, gamesPlayed, streak, attendance, total, lastPlayedFormatted, weeksMissed }) => (
               <div key={name} className="pr" style={{ alignItems: "flex-start", padding: "12px 16px" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     <div style={{ fontSize: 14 }}>{name}</div>
                     {streak >= 3 && <div style={{ fontSize: 10, background: "#1a2f1a", color: "#4ade80", border: "1px solid #2a4f2a", borderRadius: 10, padding: "2px 7px" }}>🔥 {streak}</div>}
                   </div>
-                  <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
+                  <div style={{ display: "flex", gap: 12, marginBottom: 4, flexWrap: "wrap" }}>
                     <div style={{ fontSize: 11, color: "#4a5a8a" }}>{gamesPlayed}/{total} games</div>
                     <div style={{ fontSize: 11, color: streak > 0 ? "#7eb8f7" : "#4a5a8a" }}>{streak > 0 ? `${streak} week streak` : "streak broken"}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
+                    {lastPlayedFormatted && <div style={{ fontSize: 11, color: "#4a5a8a" }}>Last played: {lastPlayedFormatted}</div>}
+                    {weeksMissed > 0 && <div style={{ fontSize: 11, color: weeksMissed >= 3 ? "#f87171" : "#4a5a8a" }}>Missed: {weeksMissed} week{weeksMissed !== 1 ? "s" : ""}</div>}
                   </div>
                   <div style={{ height: 4, borderRadius: 2, background: "#141c35", width: "100%", overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 2, width: `${attendance}%`, background: attendance >= 80 ? "#4ade80" : attendance >= 50 ? "#7eb8f7" : "#f87171" }} />
