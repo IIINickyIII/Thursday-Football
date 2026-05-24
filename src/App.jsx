@@ -130,6 +130,8 @@ export default function App() {
   const [editingName, setEditingName] = useState("");
   const [showPicker, setShowPicker] = useState(true);
   const [flashingPlayer, setFlashingPlayer] = useState(null);
+  const [showAllPaid, setShowAllPaid] = useState(false);
+  const [lastAllPaidWeek, setLastAllPaidWeek] = useState(null);
   const [statsView, setStatsView] = useState("year");
   const [showLastPlayed, setShowLastPlayed] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(null);
@@ -220,6 +222,15 @@ export default function App() {
     });
     return bal;
   };
+
+  // Trigger all paid popup
+  useEffect(() => {
+    if (playing.length > 0 && unpaidPlayers.length === 0 && lastAllPaidWeek !== viewWeek) {
+      setShowAllPaid(true);
+      setLastAllPaidWeek(viewWeek);
+      setTimeout(() => setShowAllPaid(false), 4000);
+    }
+  }, [payments, viewWeek]);
 
   const playing = getPlaying(viewWeek);
   const paidPlayers = playing.filter(p => isPaid(p, viewWeek));
@@ -315,6 +326,11 @@ export default function App() {
         .nb{margin:20px 16px;padding:20px;border-radius:8px;background:#111827;border:1px dashed #2a3a6e;text-align:center}
         @keyframes goldFlash{0%{background:#2a2510;color:#fbbf24;border-color:#fbbf24}50%{background:#fbbf24;color:#000;border-color:#fbbf24}100%{background:#2a2510;color:#fbbf24;border-color:#fbbf24}}
         .flash-gold{animation:goldFlash 0.3s ease-in-out 3}
+        @keyframes popIn{0%{transform:scale(0.5) translateY(40px);opacity:0}60%{transform:scale(1.1) translateY(-10px);opacity:1}80%{transform:scale(0.95) translateY(4px)}100%{transform:scale(1) translateY(0);opacity:1}}
+        @keyframes fadeOut{0%{opacity:1}80%{opacity:1}100%{opacity:0}}
+        @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(120px) rotate(720deg);opacity:0}}
+        .all-paid-popup{animation:popIn 0.5s cubic-bezier(.175,.885,.32,1.275) forwards, fadeOut 4s forwards}
+        .confetti-piece{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall 1.5s ease-in forwards}
       `}</style>
 
       {/* Header */}
@@ -778,6 +794,35 @@ export default function App() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ALL PAID POPUP */}
+      {showAllPaid && (
+        <div style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, pointerEvents: "none" }}>
+          {/* Confetti */}
+          {[...Array(20)].map((_, i) => (
+            <div key={i} className="confetti-piece" style={{
+              left: `${5 + (i * 4.5) % 90}%`,
+              top: `${10 + (i * 7) % 30}%`,
+              background: ["#4ade80","#fbbf24","#7eb8f7","#f87171","#c084fc"][i % 5],
+              animationDelay: `${(i * 0.07).toFixed(2)}s`,
+              animationDuration: `${1.2 + (i % 4) * 0.2}s`
+            }} />
+          ))}
+          <div className="all-paid-popup" style={{
+            background: "linear-gradient(135deg, #0d2b1a, #0a1f2e)",
+            border: "2px solid #4ade80",
+            borderRadius: 16,
+            padding: "28px 36px",
+            textAlign: "center",
+            boxShadow: "0 0 40px rgba(74,222,128,0.3), 0 20px 60px rgba(0,0,0,0.5)"
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>🏆</div>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: "#4ade80", letterSpacing: ".08em", lineHeight: 1 }}>ALL PAID!</div>
+            <div style={{ fontSize: 13, color: "#7eb8f7", marginTop: 8, letterSpacing: ".06em" }}>Everyone's stumped up. Lads. 👏</div>
+            <div style={{ fontSize: 11, color: "#3a5a3a", marginTop: 6 }}>£{paidPlayers.length * weekCost} collected</div>
+          </div>
         </div>
       )}
 
