@@ -27,6 +27,15 @@ function toLocalKey(date) {
 function getLastThursdayKey() {
   const now = new Date();
   const day = now.getDay();
+  // On Friday (5), Saturday (6), Sunday (0) — show NEXT Thursday
+  if (day === 5 || day === 6) {
+    const daysUntil = (4 - day + 7) % 7;
+    const next = new Date(now);
+    next.setDate(now.getDate() + daysUntil);
+    next.setHours(0, 0, 0, 0);
+    return toLocalKey(next);
+  }
+  // Otherwise show most recent Thursday
   const diff = (day + 3) % 7;
   const thu = new Date(now);
   thu.setDate(now.getDate() - diff);
@@ -51,34 +60,6 @@ function getAllThursdays() {
     keys.push(toLocalKey(d));
   }
   return keys;
-}
-
-function getNextThursdayKey() {
-  const now = new Date();
-  const day = now.getDay();
-  // Days until next Thursday
-  const daysUntil = (4 - day + 7) % 7 || 7;
-  const next = new Date(now);
-  next.setDate(now.getDate() + daysUntil);
-  next.setHours(0, 0, 0, 0);
-  return toLocalKey(next);
-}
-
-function getCountdown() {
-  const now = new Date();
-  const day = now.getDay();
-  const daysUntil = (4 - day + 7) % 7 || 7;
-  const next = new Date(now);
-  next.setDate(now.getDate() + daysUntil);
-  next.setHours(0, 0, 0, 0);
-  const diff = next - now;
-  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  if (d === 0 && h === 0) return { label: `${m}m`, urgency: "now" };
-  if (d === 0) return { label: `${h}h ${m}m`, urgency: "today" };
-  if (d === 1) return { label: `Tomorrow`, urgency: "soon" };
-  return { label: `${d} days`, urgency: "far" };
 }
 
 function formatDate(key) {
@@ -111,12 +92,6 @@ export default function App() {
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingName, setEditingName] = useState("");
   const [showPicker, setShowPicker] = useState(false);
-  const [countdown, setCountdown] = useState(getCountdown());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCountdown(getCountdown()), 60000);
-    return () => clearInterval(timer);
-  }, []);
   const [statsView, setStatsView] = useState("year");
   const [showLastPlayed, setShowLastPlayed] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(null);
@@ -307,8 +282,8 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
           <div>
             <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 32, letterSpacing: ".05em", lineHeight: 1, color: "#7eb8f7" }}>THURSDAY FOOTBALL</div>
-            <div style={{ fontSize: 11, color: "#3a4a6a", marginTop: 2, letterSpacing: ".1em" }}>
-              PAYMENT TRACKER {saving && <span style={{ color: "#4a5a8a" }}>· SAVING...</span>}
+            <div style={{ fontSize: 11, color: "#3a4a6a", marginTop: 2, letterSpacing: ".08em", fontStyle: "italic" }}>
+              "Football is the real winner" - TB {saving && <span style={{ color: "#4a5a8a" }}>· SAVING...</span>}
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -328,25 +303,6 @@ export default function App() {
             )}
           </div>
         </div>
-        {/* Countdown banner */}
-        {(() => {
-          const nextKey = getNextThursdayKey();
-          const nextWeek = gameWeeks[nextKey];
-          const gameOn = nextWeek && nextWeek.active;
-          const urgencyColor = countdown.urgency === "now" ? "#4ade80" : countdown.urgency === "today" ? "#fbbf24" : countdown.urgency === "soon" ? "#7eb8f7" : "#4a5a8a";
-          return (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0 10px", borderBottom: "1px solid #1e2d55", marginBottom: 0 }}>
-              <div style={{ fontSize: 11, color: "#3a4a6a", letterSpacing: ".08em" }}>NEXT GAME</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {gameOn
-                  ? <span style={{ fontSize: 10, background: "#1a2f1a", color: "#4ade80", border: "1px solid #2a4f2a", borderRadius: 10, padding: "2px 8px", letterSpacing: ".06em" }}>⚽ GAME ON</span>
-                  : <span style={{ fontSize: 10, background: "#141c35", color: "#4a5a8a", border: "1px solid #2a3a6e", borderRadius: 10, padding: "2px 8px", letterSpacing: ".06em" }}>NOT SET</span>
-                }
-                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: urgencyColor, letterSpacing: ".05em" }}>{countdown.label}</div>
-              </div>
-            </div>
-          );
-        })()}
         <div style={{ display: "flex", marginTop: 4 }}>
           <button className={`tb ${tab === "week" ? "act" : ""}`} onClick={() => setTab("week")}>Week</button>
           <button className={`tb ${tab === "balances" ? "act" : ""}`} onClick={() => setTab("balances")}>Balances</button>
